@@ -129,3 +129,186 @@ def text_node_to_html_node_new(text_node):
 		return LeafNode("img", "", props={"src": src, "alt": text_node.text})
 
 	raise ValueError(f"Unsupported TextType: {t}")
+
+
+def extract_markdown_images(text: str):
+	"""Return list of (alt, url) tuples for markdown images in `text`.
+
+	Matches patterns like: ![alt text](https://example.com/img.png)
+	"""
+	import re
+
+	pattern = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+	results = []
+	for m in pattern.finditer(text or ""):
+		alt = m.group(1)
+		url = m.group(2)
+		results.append((alt, url))
+
+	return results
+
+
+def extract_markdown_links(text: str):
+	"""Return list of (anchor, url) tuples for markdown links in `text`.
+
+	Matches patterns like: [anchor text](https://example.com)
+	"""
+	import re
+
+	pattern = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+	results = []
+	for m in pattern.finditer(text or ""):
+		anchor = m.group(1)
+		url = m.group(2)
+		results.append((anchor, url))
+
+	return results
+
+def split_nodes_delimiter(old_nodes, delimiter, text_type):
+	"""Split text nodes on a delimiter and return a new list of nodes.
+
+	- `old_nodes`: list of nodes (expected TextNode objects for splitting)
+	- `delimiter`: a string delimiter to split on (e.g. "`")
+	- `text_type`: the TextType to use for the delimited segments
+
+	Rules:
+	- Only split nodes whose TextType is a plain/text type (e.g. PLAIN_TEXT or TEXT).
+	- If an old node is not a text/plain node, append it unchanged.
+	- If the number of delimiters in a text node is odd, raise ValueError (unmatched delimiter).
+	- Returns a new list of TextNode and other nodes.
+	"""
+	from textnode import TextNode, TextType
+
+	new_nodes = []
+	for node in old_nodes:
+		# Only attempt to split TextNode objects
+		if not isinstance(node, TextNode):
+			new_nodes.append(node)
+			continue
+
+		tt_name = getattr(node.text_type, "name", "").upper()
+		if tt_name not in ("PLAIN_TEXT", "TEXT"):
+			# Not a plain text node; leave as-is
+			new_nodes.append(node)
+			continue
+
+		text = node.text
+		if delimiter == "":
+			raise ValueError("Delimiter must be a non-empty string")
+
+		count = text.count(delimiter)
+		if count == 0:
+			new_nodes.append(node)
+			continue
+
+		if count % 2 != 0:
+			raise ValueError(f"Unmatched delimiter '{delimiter}' in text: {text!r}")
+
+		parts = text.split(delimiter)
+		# parts alternates: plain, delimited, plain, delimited, ...
+		for idx, part in enumerate(parts):
+			if idx % 2 == 0:
+				# plain text segment
+				new_nodes.append(TextNode(part, TextType.PLAIN_TEXT))
+			else:
+				# delimited segment -> use provided text_type
+				new_nodes.append(TextNode(part, text_type))
+
+	return new_nodes
+
+
+def split_nodes_link(old_nodes):
+	"""Split plain text nodes into link nodes for markdown links.
+
+	Converts text like 'a [link](url) b' into three TextNode objects:
+	plain, link (TextType.LINK_TEXT with url), plain.
+	"""
+	from textnode import TextNode, TextType
+	import re
+
+	pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+	new_nodes = []
+	for node in old_nodes:
+		if not isinstance(node, TextNode):
+			new_nodes.append(node)
+			continue
+
+		tt_name = getattr(node.text_type, "name", "").upper()
+		if tt_name not in ("PLAIN_TEXT", "TEXT"):
+			new_nodes.append(node)
+			continue
+
+		text = node.text
+		# Basic unmatched check: brackets/parentheses counts
+		if text.count("[") != text.count("]") or text.count("(") != text.count(")"):
+			raise ValueError(f"Unmatched link syntax in text: {text!r}")
+
+		matches = list(pattern.finditer(text))
+		if not matches:
+			new_nodes.append(node)
+			continue
+
+		pos = 0
+		for m in matches:
+			if m.start() > pos:
+				new_nodes.append(TextNode(text[pos : m.start()], TextType.PLAIN_TEXT))
+			anchor = m.group(1)
+			url = m.group(2)
+			new_nodes.append(TextNode(anchor, TextType.LINK_TEXT, url=url))
+			pos = m.end()
+
+		if pos < len(text):
+			new_nodes.append(TextNode(text[pos:], TextType.PLAIN_TEXT))
+
+	return new_nodes
+
+
+def split_nodes_image(old_nodes):
+	"""Split plain text nodes into image nodes for markdown images.
+
+	Converts text like 'a ![alt](url) b' into three TextNode objects:
+	plain, image (TextNode with text=alt and url set), plain.
+	"""
+	from textnode import TextNode, TextType
+	import re
+
+	pattern = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+
+	new_nodes = []
+	for node in old_nodes:
+		if not isinstance(node, TextNode):
+			new_nodes.append(node)
+			continue
+
+		tt_name = getattr(node.text_type, "name", "").upper()
+		if tt_name not in ("PLAIN_TEXT", "TEXT"):
+			new_nodes.append(node)
+			continue
+
+		text = node.text
+		# Basic unmatched check: '![' without matching ')'
+		if text.count("![") != text.count(")"):
+			# crude but effective for common malformed cases
+			if text.count("![") > 0:
+				raise ValueError(f"Unmatched image syntax in text: {text!r}")
+
+		matches = list(pattern.finditer(text))
+		if not matches:
+			new_nodes.append(node)
+			continue
+
+		pos = 0
+		for m in matches:
+			if m.start() > pos:
+				new_nodes.append(TextNode(text[pos : m.start()], TextType.PLAIN_TEXT))
+			alt = m.group(1)
+			url = m.group(2)
+			# Use the TextNode with alt text and url in the url field
+			new_nodes.append(TextNode(alt, TextType.IMAGE, url=url))
+			pos = m.end()
+
+		if pos < len(text):
+			new_nodes.append(TextNode(text[pos:], TextType.PLAIN_TEXT))
+
+	return new_nodes

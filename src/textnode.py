@@ -12,6 +12,7 @@ class TextType(Enum):
     HIGHLIGHTED_TEXT = 9
     SUBSCRIPT_TEXT = 10
     SUPERSCRIPT_TEXT = 11
+    IMAGE = 12
 
 class TextNode:
     def __init__(self, text: str, text_type: TextType = TextType.PLAIN_TEXT, url: str = None):
