@@ -1,6 +1,6 @@
 import unittest
 
-from htmlnode import HTMLNode
+from htmlnode import HTMLNode, LeafNode
 
 
 class TestHTMLNode(unittest.TestCase):
@@ -33,6 +33,42 @@ class TestHTMLNode(unittest.TestCase):
             "children=None, props=None)], props={'class': 'x'})"
         )
         self.assertEqual(repr(node), expected)
+
+    def test_leafnode_to_html_renders_plain_tag(self):
+        node = LeafNode("p", "This is a paragraph of text.")
+        self.assertEqual(node.to_html(), "<p>This is a paragraph of text.</p>")
+
+    def test_leaf_to_html_p(self):
+        node = LeafNode("p", "Hello, world!")
+        self.assertEqual(node.to_html(), "<p>Hello, world!</p>")
+
+    def test_leaf_to_html_h1(self):
+        node = LeafNode("h1", "Main title")
+        self.assertEqual(node.to_html(), "<h1>Main title</h1>")
+
+    def test_leaf_to_html_code(self):
+        node = LeafNode("code", "print('ok')")
+        self.assertEqual(node.to_html(), "<code>print('ok')</code>")
+
+    def test_leafnode_to_html_renders_with_props(self):
+        node = LeafNode("a", "Click me!", {"href": "https://www.google.com"})
+        self.assertEqual(node.to_html(), '<a href="https://www.google.com">Click me!</a>')
+
+    def test_leafnode_to_html_returns_raw_text_when_tag_is_none(self):
+        node = LeafNode(None, "Raw text")
+        self.assertEqual(node.to_html(), "Raw text")
+
+    def test_leafnode_to_html_raises_when_value_is_none(self):
+        node = LeafNode("p", None)
+        with self.assertRaises(ValueError):
+            node.to_html()
+
+    def test_leafnode_repr_excludes_children(self):
+        node = LeafNode("span", "chip", {"class": "pill"})
+        self.assertEqual(
+            repr(node),
+            "LeafNode(tag='span', value='chip', props={'class': 'pill'})",
+        )
 
 
 if __name__ == "__main__":
