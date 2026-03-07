@@ -287,11 +287,19 @@ def split_nodes_image(old_nodes):
 			continue
 
 		text = node.text
-		# Basic unmatched check: '![' without matching ')'
-		if text.count("![") != text.count(")"):
-			# crude but effective for common malformed cases
-			if text.count("![") > 0:
+		# Validate that any '![' occurrences are well-formed: must have ']' then '(' then ')'
+		idx = text.find('![')
+		while idx != -1:
+			close_br = text.find(']', idx + 2)
+			if close_br == -1:
 				raise ValueError(f"Unmatched image syntax in text: {text!r}")
+			# next char after ']' should be '('
+			if close_br + 1 >= len(text) or text[close_br + 1] != '(':
+				raise ValueError(f"Unmatched image syntax in text: {text!r}")
+			close_paren = text.find(')', close_br + 2)
+			if close_paren == -1:
+				raise ValueError(f"Unmatched image syntax in text: {text!r}")
+			idx = text.find('![', close_paren + 1)
 
 		matches = list(pattern.finditer(text))
 		if not matches:
@@ -312,3 +320,33 @@ def split_nodes_image(old_nodes):
 			new_nodes.append(TextNode(text[pos:], TextType.PLAIN_TEXT))
 
 	return new_nodes
+
+
+def text_to_textnodes(text: str):
+	"""Convert raw markdown-like text into a list of TextNode objects.
+
+	The function applies several splitting passes to handle images, links,
+	code spans, bold, and italic markers. It returns a list of TextNode
+	instances using the TextType enum from `textnode`.
+	"""
+	from textnode import TextNode, TextType
+
+	# start with a single plain text node
+	nodes = [TextNode(text, TextType.PLAIN_TEXT)]
+
+	# split images: ![alt](url)
+	nodes = split_nodes_image(nodes)
+
+	# split links: [text](url)
+	nodes = split_nodes_link(nodes)
+
+	# split code spans: `code`
+	nodes = split_nodes_delimiter(nodes, "`", TextType.CODE_TEXT)
+
+	# split bold: **bold**
+	nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD_TEXT)
+
+	# split italic: _italic_
+	nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC_TEXT)
+
+	return nodes
