@@ -1,3 +1,16 @@
+from enum import Enum
+from typing import Optional
+
+
+class BlockType(Enum):
+	PARAGRAPH = "paragraph"
+	HEADING = "heading"
+	CODE = "code"
+	QUOTE = "quote"
+	UNORDERED_LIST = "unordered_list"
+	ORDERED_LIST = "ordered_list"
+
+
 class HTMLNode:
 	def __init__(self, tag=None, value=None, children=None, props=None):
 		self.tag = tag
@@ -163,6 +176,18 @@ def extract_markdown_links(text: str):
 		results.append((anchor, url))
 
 	return results
+
+
+def markdown_to_blocks(markdown: Optional[str]):
+	"""Split a markdown document into top-level blocks.
+
+	Splits on double-newlines, strips whitespace, and removes empty blocks.
+	"""
+	if markdown is None:
+		return []
+
+	blocks = [b.strip() for b in markdown.split("\n\n")]
+	return [b for b in blocks if b]
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
 	"""Split text nodes on a delimiter and return a new list of nodes.

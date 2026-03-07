@@ -12,6 +12,7 @@ from htmlnode import (
 )
 from textnode import TextNode, TextType
 from htmlnode import extract_markdown_images, extract_markdown_links
+from htmlnode import markdown_to_blocks
 
 
 
@@ -300,6 +301,31 @@ class TestHTMLNode(unittest.TestCase):
         node = TextNode("broken ![alt](no closing", TextType.PLAIN_TEXT)
         with self.assertRaises(ValueError):
             split_nodes_image([node])
+
+    def test_markdown_to_blocks(self):
+        md = """# Heading
+
+This is a paragraph.
+
+- item 1
+- item 2
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, ["# Heading", "This is a paragraph.", "- item 1\n- item 2"])    
+
+    def test_markdown_to_blocks_strips_and_ignores_empty(self):
+        md = "\n\n  # Hi  \n\n\n  \nParagraph  \n\n"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, ["# Hi", "Paragraph"]) 
+
+    def test_markdown_to_blocks_multiple_double_newlines(self):
+        md = "A\n\nB\n\n\n\nC"
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, ["A", "B", "C"]) 
+
+    def test_markdown_to_blocks_empty_or_none(self):
+        self.assertEqual(markdown_to_blocks(""), [])
+        self.assertEqual(markdown_to_blocks(None), [])
 
 
 if __name__ == "__main__":
