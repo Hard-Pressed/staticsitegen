@@ -8,9 +8,11 @@ from htmlnode import (
     split_nodes_delimiter,
     split_nodes_link,
     split_nodes_image,
+    text_to_textnodes,
 )
 from textnode import TextNode, TextType
 from htmlnode import extract_markdown_images, extract_markdown_links
+
 
 
 class TestHTMLNode(unittest.TestCase):
@@ -269,6 +271,25 @@ class TestHTMLNode(unittest.TestCase):
             TextNode("second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"),
         ]
         self.assertListEqual(expected, new_nodes)
+
+    def test_text_to_textnodes_complex(self):
+        src = (
+            "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        )
+        nodes = text_to_textnodes(src)
+        expected = [
+            TextNode("This is ", TextType.PLAIN_TEXT),
+            TextNode("text", TextType.BOLD_TEXT),
+            TextNode(" with an ", TextType.PLAIN_TEXT),
+            TextNode("italic", TextType.ITALIC_TEXT),
+            TextNode(" word and a ", TextType.PLAIN_TEXT),
+            TextNode("code block", TextType.CODE_TEXT),
+            TextNode(" and an ", TextType.PLAIN_TEXT),
+            TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+            TextNode(" and a ", TextType.PLAIN_TEXT),
+            TextNode("link", TextType.LINK_TEXT, "https://boot.dev"),
+        ]
+        self.assertEqual(nodes, expected)
 
     def test_split_nodes_link_unmatched_raises(self):
         node = TextNode("start [unclosed", TextType.PLAIN_TEXT)
