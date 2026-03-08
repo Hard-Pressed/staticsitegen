@@ -375,3 +375,151 @@ def text_to_textnodes(text: str):
 	nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC_TEXT)
 
 	return nodes
+
+
+def text_to_children(text: str):
+	"""Convert an inline markdown text string into a list of HTMLNode children.
+
+	Uses `text_to_textnodes` to split inline elements, then converts each
+	TextNode into an HTMLNode via `text_node_to_html_node`.
+	"""
+	from textnode import TextNode
+
+	tnodes = text_to_textnodes(text)
+	children = []
+	for tn in tnodes:
+		# convert each TextNode to an HTML LeafNode
+		children.append(text_node_to_html_node(tn))
+	return children
+
+
+def determine_block_type(block: str):
+	"""Return (BlockType, info) for a given block string.
+
+	`info` may contain auxiliary data like heading level.
+	"""
+	stripped = block.lstrip()
+	# code fence
+	if stripped.startswith('```'):
+		return BlockType.CODE, {}
+
+	# heading: count leading # characters
+	if stripped.startswith('#'):
+		# count number of # at start
+		i = 0
+		while i < len(stripped) and stripped[i] == '#':
+			i += 1
+		# skip a single space if present
+		return BlockType.HEADING, {"level": max(1, i)}
+
+	# blockquote
+	if stripped.startswith('>'):
+		return BlockType.QUOTE, {}
+
+	# unordered list (lines starting with - or *)
+	lines = block.splitlines()
+	if all(line.lstrip().startswith(('-', '*')) for line in lines if line.strip()):
+		return BlockType.UNORDERED_LIST, {}
+
+	# ordered list: lines starting with digit + '.'
+	import re
+
+	if all(re.match(r"^\s*\d+\.", line) for line in lines if line.strip()):
+		return BlockType.ORDERED_LIST, {}
+
+	return BlockType.PARAGRAPH, {}
+
+
+def markdown_to_html_node(markdown: str):
+	"""Convert a full markdown document into a single ParentNode ('div').
+
+	Each top-level block becomes a child HTML node with appropriate tag and
+	children representing inline content.
+	"""
+	blocks = markdown_to_blocks(markdown)
+	children = []
+	for block in blocks:
+		btype, info = determine_block_type(block)
+
+		if btype == BlockType.HEADING:
+			# remove leading #'s and optional space
+			stripped = block.lstrip()
+			i = 0
+			while i < len(stripped) and stripped[i] == '#':
+				i += 1
+			content = stripped[i:].lstrip()
+			level = info.get("level", 1)
+			tag = f"h{min(level,6)}"
+			node_children = text_to_children(content)
+			children.append(ParentNode(tag, node_children))
+			continue
+
+		if btype == BlockType.PARAGRAPH:
+			node_children = text_to_children(block)
+			children.append(ParentNode("p", node_children))
+			continue
+
+		if btype == BlockType.CODE:
+			# code fence: extract content between fences
+			lines = block.splitlines()
+			# remove first and last fence lines if present
+			if lines and lines[0].startswith('```'):
+				# find closing fence
+				end = None
+				for idx in range(1, len(lines)):
+					if lines[idx].startswith('```'):
+						end = idx
+						break
+				if end is None:
+					# no closing fence; take everything after the first line
+					code_text = "\n".join(lines[1:])
+				else:
+					code_text = "\n".join(lines[1:end])
+			else:
+				code_text = block
+			# create code TextNode and convert without inline parsing
+			from textnode import TextNode, TextType
+
+			code_tn = TextNode(code_text, TextType.CODE_TEXT)
+			code_node = text_node_to_html_node(code_tn)
+			# wrap in pre for block formatting
+			children.append(ParentNode("pre", [code_node]))
+			continue
+
+		if btype == BlockType.QUOTE:
+			# remove leading > and space
+			lines = [l.lstrip()[1:].lstrip() if l.lstrip().startswith('>') else l for l in block.splitlines()]
+			content = "\n".join(lines)
+			node_children = text_to_children(content)
+			children.append(ParentNode("blockquote", node_children))
+			continue
+
+		if btype == BlockType.UNORDERED_LIST:
+			# each non-empty line becomes li
+			items = []
+			for line in block.splitlines():
+				s = line.lstrip()
+				if not s:
+					continue
+				if s.startswith(('-', '*')):
+					item_text = s[1:].lstrip()
+				else:
+					item_text = s
+				items.append(ParentNode("li", text_to_children(item_text)))
+			children.append(ParentNode("ul", items))
+			continue
+
+		if btype == BlockType.ORDERED_LIST:
+			items = []
+			import re
+
+			for line in block.splitlines():
+				if not line.strip():
+					continue
+				m = re.match(r"^\s*\d+\.\s*(.*)$", line)
+				item_text = m.group(1) if m else line.strip()
+				items.append(ParentNode("li", text_to_children(item_text)))
+			children.append(ParentNode("ol", items))
+			continue
+
+	return ParentNode("div", children)

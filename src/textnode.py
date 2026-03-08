@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 class TextType(Enum):
     PLAIN_TEXT = 1
@@ -15,7 +16,7 @@ class TextType(Enum):
     IMAGE = 12
 
 class TextNode:
-    def __init__(self, text: str, text_type: TextType = TextType.PLAIN_TEXT, url: str = None):
+    def __init__(self, text: str, text_type: TextType = TextType.PLAIN_TEXT, url: Optional[str] = None):
         self.text = text
         self.text_type = text_type
         self.url = url  # Used only for LINK_TEXT

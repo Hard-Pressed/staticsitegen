@@ -11,6 +11,15 @@ def main():
 	node = TextNode("dummy text", text_type=TextType.BOLD_TEXT, url=None)
 	print(node)
 
+	# Copy static site assets into `public/`
+	try:
+		from copy_static import copy_static_to_public
+		print("Copying static files to public/...")
+		copy_static_to_public()
+		print("Finished copying static files to public/.")
+	except Exception as e:
+		print(f"Failed to copy static files: {e}")
+
 
 if __name__ == "__main__":
 	main()

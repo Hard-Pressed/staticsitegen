@@ -9,6 +9,7 @@ from htmlnode import (
     split_nodes_link,
     split_nodes_image,
     text_to_textnodes,
+    markdown_to_html_node,
 )
 from textnode import TextNode, TextType
 from htmlnode import extract_markdown_images, extract_markdown_links
@@ -326,6 +327,37 @@ This is a paragraph.
     def test_markdown_to_blocks_empty_or_none(self):
         self.assertEqual(markdown_to_blocks(""), [])
         self.assertEqual(markdown_to_blocks(None), [])
+
+    def test_markdown_to_html_node_heading_and_paragraph(self):
+        md = "# Hello\n\nThis is **bold** and _italic_."
+        root = markdown_to_html_node(md)
+        self.assertEqual(
+            root.to_html(),
+            "<div><h1>Hello</h1><p>This is <b>bold</b> and <i>italic</i>.</p></div>",
+        )
+
+    def test_markdown_to_html_node_list(self):
+        md = "- one\n- two\n- three"
+        root = markdown_to_html_node(md)
+        self.assertEqual(root.to_html(), "<div><ul><li>one</li><li>two</li><li>three</li></ul></div>")
+
+    def test_markdown_to_html_node_code_block(self):
+        md = "```\nprint(1)\n```"
+        root = markdown_to_html_node(md)
+        self.assertEqual(root.to_html(), "<div><pre><code>print(1)</code></pre></div>")
+
+    def test_markdown_to_html_node_blockquote(self):
+        md = "> This is a quote"
+        root = markdown_to_html_node(md)
+        self.assertEqual(root.to_html(), "<div><blockquote>This is a quote</blockquote></div>")
+
+    def test_markdown_to_html_node_image_and_link(self):
+        md = "This has an ![alt](https://img) and a [link](https://ex)"
+        root = markdown_to_html_node(md)
+        self.assertEqual(
+            root.to_html(),
+            "<div><p>This has an <img src=\"https://img\" alt=\"alt\"></img> and a <a href=\"https://ex\">link</a></p></div>",
+        )
 
 
 if __name__ == "__main__":
