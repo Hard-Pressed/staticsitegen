@@ -189,6 +189,22 @@ def markdown_to_blocks(markdown: Optional[str]):
 	blocks = [b.strip() for b in markdown.split("\n\n")]
 	return [b for b in blocks if b]
 
+
+def extract_title(markdown: str):
+	"""Return the text of the first h1 heading in a markdown document.
+
+	An h1 heading is a line that begins with exactly one '#'. The leading '#'
+	and surrounding whitespace are removed from the returned title.
+	"""
+	for line in markdown.splitlines():
+		stripped = line.strip()
+		if stripped.startswith("#") and not stripped.startswith("##"):
+			title = stripped[1:].strip()
+			if title:
+				return title
+
+	raise ValueError("Markdown document does not contain an h1 header")
+
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
 	"""Split text nodes on a delimiter and return a new list of nodes.
 

@@ -4,6 +4,7 @@ from htmlnode import (
     HTMLNode,
     LeafNode,
     ParentNode,
+    extract_title,
     text_node_to_html_node,
     split_nodes_delimiter,
     split_nodes_link,
@@ -327,6 +328,21 @@ This is a paragraph.
     def test_markdown_to_blocks_empty_or_none(self):
         self.assertEqual(markdown_to_blocks(""), [])
         self.assertEqual(markdown_to_blocks(None), [])
+
+    def test_extract_title_returns_h1_text(self):
+        self.assertEqual(extract_title("# Hello"), "Hello")
+
+    def test_extract_title_strips_whitespace(self):
+        self.assertEqual(extract_title("#   Hello World   "), "Hello World")
+
+    def test_extract_title_ignores_non_h1_headers(self):
+        markdown = "## Subtitle\n\n# Real Title\n\nParagraph text"
+        self.assertEqual(extract_title(markdown), "Real Title")
+
+    def test_extract_title_raises_without_h1(self):
+        markdown = "## Subtitle\n\nParagraph text"
+        with self.assertRaises(ValueError):
+            extract_title(markdown)
 
     def test_markdown_to_html_node_heading_and_paragraph(self):
         md = "# Hello\n\nThis is **bold** and _italic_."
