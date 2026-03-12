@@ -1,66 +1,56 @@
+import os
+import sys
+from pathlib import Path
+
+# Ensure `src` (this file's directory) is on sys.path so we can import local modules.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from copy_static import copy_static_to_public
+from htmlnode import extract_title, markdown_to_html_node
+
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+
+    with open(from_path, "r", encoding="utf-8") as f:
+        markdown = f.read()
+
+    with open(template_path, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    content_html = markdown_to_html_node(markdown).to_html()
+    title = extract_title(markdown)
+
+    page_html = template.replace("{{ Title }}", title).replace("{{ Content }}", content_html)
+    page_html = page_html.replace("{{ title }}", title).replace("{{ content }}", content_html)
+
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    with open(dest_path, "w", encoding="utf-8") as f:
+        f.write(page_html)
+
+
+def generate_pages_recursive(content_dir, template_path, dest_dir):
+    """Generate one HTML page for every markdown file under content_dir."""
+    for root, _, files in os.walk(content_dir):
+        for filename in files:
+            if not filename.endswith(".md"):
+                continue
+
+            from_path = os.path.join(root, filename)
+            rel_path = os.path.relpath(from_path, content_dir)
+            html_rel_path = os.path.splitext(rel_path)[0] + ".html"
+            dest_path = os.path.join(dest_dir, html_rel_path)
+            generate_page(from_path, template_path, dest_path)
+
+
 def main():
-	from pathlib import Path
-	import sys
+    print("Copying static files to public/...")
+    copy_static_to_public()
+    print("Finished copying static files to public/.")
 
-	# Ensure `src` (this file's directory) is on sys.path so we can import local modules
-	sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-	from textnode import TextNode, TextType
-	# import markdown/site helpers
-	from htmlnode import markdown_to_html_node, extract_title
-	import os
-
-	# Create a TextNode with dummy values
-	node = TextNode("dummy text", text_type=TextType.BOLD_TEXT, url=None)
-	print(node)
-
-	# Copy static site assets into `public/`
-	try:
-		from copy_static import copy_static_to_public
-		print("Copying static files to public/...")
-		copy_static_to_public()
-		print("Finished copying static files to public/.")
-	except Exception as e:
-		print(f"Failed to copy static files: {e}")
-
-	# generate a page from content/index.md -> public/index.html using template.html
-	def generate_page(from_path, template_path, dest_path):
-		print(f"Generating page from {from_path} to {dest_path} using {template_path}")
-		# read markdown
-		with open(from_path, "r", encoding="utf-8") as f:
-			md = f.read()
-
-		# read template
-		with open(template_path, "r", encoding="utf-8") as f:
-			tpl = f.read()
-
-		# convert markdown to HTML string
-		html_node = markdown_to_html_node(md)
-		content_html = html_node.to_html()
-
-		# extract title
-		title = extract_title(md)
-
-		# replace placeholders (handle common casing variants)
-		out = tpl.replace("{{ Title }}", title).replace("{{ Content }}", content_html)
-		out = out.replace("{{ title }}", title).replace("{{ content }}", content_html)
-
-		# ensure destination directory exists
-		dirname = os.path.dirname(dest_path)
-		if dirname:
-			os.makedirs(dirname, exist_ok=True)
-
-		# write output
-		with open(dest_path, "w", encoding="utf-8") as f:
-			f.write(out)
-
-	# Attempt to generate the main page
-	try:
-		generate_page("content/index.md", "template.html", "public/index.html")
-		print("Generated public/index.html")
-	except Exception as e:
-		print(f"Failed to generate page: {e}")
+    generate_pages_recursive("content", "template.html", "public")
+    print("Finished generating pages.")
 
 
 if __name__ == "__main__":
-	main()
+    main()

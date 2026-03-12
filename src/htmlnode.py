@@ -437,9 +437,10 @@ def determine_block_type(block: str):
 	if stripped.startswith('>'):
 		return BlockType.QUOTE, {}
 
-	# unordered list (lines starting with - or *)
+	# unordered list: lines must start with list markers "- " or "* "
+	# (avoid misclassifying bold text like "**hello**" as a list item)
 	lines = block.splitlines()
-	if all(line.lstrip().startswith(('-', '*')) for line in lines if line.strip()):
+	if all(line.lstrip().startswith("- ") or line.lstrip().startswith("* ") for line in lines if line.strip()):
 		return BlockType.UNORDERED_LIST, {}
 
 	# ordered list: lines starting with digit + '.'

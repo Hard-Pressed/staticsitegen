@@ -1,11 +1,9 @@
-# Contact
-Thanks for visiting the Tolkien Fan Club.
-
-If you want to talk legendarium, adaptations, or favorite characters, send a raven (or just an email).
+# Contact the Author
 
 [< Back Home](/)
 
-## Reach out
-- Location: The Shire (spiritually)
+Give me a call anytime to chat about Tolkien!
 
-I would love to hear your hottest Middle-earth takes.
+`555-555-5555`
+
+**"Váya márië."**
