@@ -372,7 +372,7 @@ This is a paragraph.
         root = markdown_to_html_node(md)
         self.assertEqual(
             root.to_html(),
-            "<div><p>This has an <img src=\"https://img\" alt=\"alt\"></img> and a <a href=\"https://ex\">link</a></p></div>",
+            "<div><p>This has an <img src=\"https://img\" alt=\"alt\" /> and a <a href=\"https://ex\">link</a></p></div>",
         )
 
 
